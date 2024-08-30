@@ -15,7 +15,7 @@ spec:
     - host: server.wisdom0405.shop
       http:
         paths:
-          - path: /(.*)
+          - path: /
             pathType: Prefix
             backend:
               service:
