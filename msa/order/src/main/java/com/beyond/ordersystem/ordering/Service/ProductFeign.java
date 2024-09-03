@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 // url 설정을 추가하여 service 자원을 검색하도록 설정
 // name : eureka에 등록된 name
-// url : 쿠버네티스에 등록된 name
+// url : 쿠버네티스에 등록된 name (k8s의 서비스명) - product_service.yml의 metadata > name명
 @FeignClient(name="product-service", url="http://product-service", configuration = FeignConfig.class)
 public interface ProductFeign {
     @GetMapping(value = "/product/{id}")

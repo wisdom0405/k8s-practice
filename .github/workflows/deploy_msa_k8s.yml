@@ -1,0 +1,82 @@
+# docker 빌드 후 ecr 업로드 및 kubectl apply
+
+name: deploy ordersystem with k8s
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout github
+        uses: actions/checkout@v2
+
+      - name: install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: "v1.25.9"
+        id: install
+
+      - name: configure aws
+        uses: aws-actions/configure-aws-credentials@v1
+        with: 
+          aws-access-key-id: ${{secrets.AWS_KEY}}
+          aws-secret-access-key: ${{secrets.AWS_SECRET}}
+          aws-region: ap-northeast-2
+      
+      - name: update cluster information
+        run: aws eks update-kubeconfig --name 6team-cluster --region ap-northeast-2 #cluster update
+
+      - name: login ecr
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      # msa member
+      - name: build and push docker member image to ecr
+        env: 
+          REGISTRY: 346903264902.dkr.ecr.ap-northeast-2.amazonaws.com
+          REPOSITORY: seulki-member
+        run: |
+          docker build -t $REGISTRY/$REPOSITORY:latest \
+          -f ./msa/member/Dockerfile ./msa/member
+          docker push $REGISTRY/$REPOSITORY:latest
+
+      - name: eks kubectl apply
+        run: |
+          kubectl apply -f ./msa/member/k8s/member_depl.yml
+          kubectl rollout restart deployment member-deployment -n seulki
+
+      # msa order
+      - name: build and push docker order image to ecr
+        env: 
+          REGISTRY: 346903264902.dkr.ecr.ap-northeast-2.amazonaws.com
+          REPOSITORY: seulki-order
+        run: |
+          docker build -t $REGISTRY/$REPOSITORY:latest \
+          -f ./msa/order/Dockerfile ./msa/order
+          docker push $REGISTRY/$REPOSITORY:latest
+
+      - name: eks kubectl apply
+        run: |
+          kubectl apply -f ./msa/order/k8s/order_depl.yml
+          kubectl rollout restart deployment order-deployment -n seulki
+          
+      # msa product
+      - name: build and push docker product image to ecr
+        env: 
+          REGISTRY: 346903264902.dkr.ecr.ap-northeast-2.amazonaws.com
+          REPOSITORY: seulki-product
+        run: |
+          docker build -t $REGISTRY/$REPOSITORY:latest \
+          -f ./msa/product/Dockerfile ./msa/product 
+          docker push $REGISTRY/$REPOSITORY:latest
+
+      - name: eks kubectl apply
+        run: |
+          kubectl apply -f ./msa/product/k8s/product_depl.yml
+          kubectl rollout restart deployment product-deployment -n seulki
+
+          
+
+          
